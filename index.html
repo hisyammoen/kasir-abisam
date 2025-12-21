@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Abisam POS Pro - Fixed Receipt</title>
+    <title>Abisam POS Pro - Updated</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -17,56 +17,55 @@
         #capture-area { 
             display: flex; 
             justify-content: center; 
-            padding: 15px;
+            padding: 20px;
             background: #f0f0f0;
         }
         
         .receipt-area { 
             font-family: 'Courier New', Courier, monospace; 
-            width: 320px; /* Lebar standar printer thermal agar tidak kepotong */
-            padding: 20px; 
+            width: 350px; 
+            padding: 25px; 
             background: white; 
             color: #000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             text-align: center;
         }
 
-        .receipt-area b#r-store-name { font-size: 20px; font-weight: 900; display: block; line-height: 1.2; }
-        .receipt-area #r-store-addr { font-size: 12px; font-weight: 800; display: block; margin-top: 4px; }
+        .receipt-area b#r-store-name { font-size: 24px; font-weight: 900; display: block; line-height: 1; }
+        .receipt-area #r-store-addr { font-size: 13px; font-weight: 800; display: block; margin-top: 5px; }
         
-        /* PERBAIKAN: Nama produk tidak kepotong (Wrap Text) */
-        .item-row { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: flex-start;
-            font-size: 14px; 
-            font-weight: 900; 
-            margin-bottom: 6px; 
-            text-align: left; 
-            gap: 10px;
-        }
-        .item-name { 
-            flex: 1; 
-            word-break: break-word; /* Memaksa teks turun jika kepanjangan */
-            white-space: normal;
-        }
-        .item-price { white-space: nowrap; }
+        .item-row { display: flex; justify-content: space-between; font-size: 15px; font-weight: 900; margin-bottom: 3px; text-align: left; }
+        .item-name { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-        .total-row { font-size: 20px; font-weight: 900; display: flex; justify-content: space-between; border-top: 2px dashed #000; padding-top: 8px; margin-top: 5px; }
+        .total-row { font-size: 22px; font-weight: 900; display: flex; justify-content: space-between; border-top: 2px dashed #000; padding-top: 10px; }
         
-        /* PERBAIKAN: Kotak Terverifikasi lebih Rapi */
         .verified-badge {
             margin-top: 15px;
             border: 2px solid #000;
-            padding: 6px 10px;
+            padding: 5px;
             display: inline-block;
             font-weight: 900;
-            font-size: 12px;
+            font-size: 14px;
             text-transform: uppercase;
-            letter-spacing: 1px;
         }
 
+        .unpaid-badge {
+            margin-top: 15px;
+            border: 2px solid #ef4444;
+            color: #ef4444;
+            padding: 5px;
+            display: inline-block;
+            font-weight: 900;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        /* Styling scrollbar kategori */
+        #category-filter-list::-webkit-scrollbar { display: none; }
+        #category-filter-list { -ms-overflow-style: none; scrollbar-width: none; }
+
         .loading-overlay { position: fixed; inset: 0; background: white; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        #r-logo-preview { max-width: 70px; max-height: 70px; margin: 0 auto 10px; display: block; object-fit: contain; }
+        #r-logo-preview { max-width: 80px; max-height: 80px; margin: 0 auto 10px; display: block; object-fit: contain; }
     </style>
 </head>
 <body class="select-none">
@@ -80,7 +79,7 @@
         
         <header id="header" class="bg-blue-600 text-white p-5 sticky top-0 z-50 flex justify-between items-center hidden">
             <div>
-                <h1 id="brand-name-header" class="font-black text-xl italic text-yellow-300 uppercase">ABISAM POS</h1>
+                <h1 id="brand-name-header" class="font-black text-xl italic text-yellow-300 uppercase italic">ABISAM POS</h1>
                 <p id="header-user" class="text-[9px] font-black opacity-80 uppercase tracking-widest"></p>
             </div>
             <i class="fas fa-shield-alt text-xl"></i>
@@ -96,10 +95,16 @@
         </div>
 
         <div id="view-home" class="hidden">
-            <div class="p-4 bg-white border-b sticky top-[72px] z-40">
-                <input type="text" id="search-input" oninput="renderProducts()" placeholder="Cari nama barang..." class="w-full bg-gray-100 p-3 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-blue-600">
+            <div class="bg-white sticky top-[72px] z-40 shadow-sm">
+                <div class="p-4 pb-2 border-b">
+                    <input type="text" id="search-input" oninput="renderProducts()" placeholder="Cari nama barang..." class="w-full bg-gray-100 p-3 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-blue-600">
+                </div>
+                <div id="category-filter-list" class="flex gap-2 overflow-x-auto px-4 py-3 whitespace-nowrap bg-gray-50 border-b">
+                    </div>
             </div>
+
             <div id="txn-product-list" class="grid grid-cols-2 gap-3 p-4"></div>
+            
             <div id="floating-bar" class="fixed bottom-24 left-0 right-0 px-4 hidden max-w-md mx-auto z-40">
                 <button onclick="openCheckout()" class="w-full bg-blue-700 text-white p-5 rounded-2xl shadow-2xl flex justify-between items-center ring-4 ring-white">
                     <span class="font-black text-lg uppercase"><span id="cart-count">0</span> Item</span>
@@ -113,7 +118,30 @@
                 <h2 class="font-black text-2xl text-gray-800 border-l-8 border-blue-600 pl-3 uppercase italic">Laporan</h2>
                 <button onclick="clearHistory()" class="text-red-500 font-black text-[10px] bg-red-50 px-3 py-2 rounded-lg uppercase italic">Reset Data</button>
             </div>
+            
+            <button onclick="renderAccReport()" class="w-full bg-indigo-600 text-white p-4 rounded-2xl shadow-lg mb-6 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="bg-white/20 p-2 rounded-lg"><i class="fas fa-headphones text-xl"></i></div>
+                    <div class="text-left">
+                        <div class="font-black text-sm uppercase">Laporan Acc</div>
+                        <div class="text-[10px] opacity-80">Klik untuk melihat detail penjualan ACC</div>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-right"></i>
+            </button>
+
             <div id="transaction-list" class="space-y-6"></div>
+        </div>
+
+        <div id="view-acc-rekap" class="hidden p-5">
+            <button onclick="switchView('history')" class="mb-4 flex items-center gap-2 text-gray-500 font-bold text-sm"><i class="fas fa-arrow-left"></i> KEMBALI</button>
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 rounded-[32px] text-white shadow-xl mb-6 text-center">
+                <h3 class="text-sm font-bold opacity-80 uppercase tracking-widest mb-1">Total Penjualan ACC</h3>
+                <h1 id="acc-total-sales" class="text-4xl font-black text-yellow-300">Rp 0</h1>
+                <p class="text-[10px] mt-2 opacity-70">Menghitung semua item dengan label mengandung "ACC"</p>
+            </div>
+            <h4 class="font-black text-gray-700 uppercase mb-4 border-b-2 pb-2">Rincian Item Terjual</h4>
+            <div id="acc-item-list" class="space-y-3"></div>
         </div>
 
         <div id="view-products" class="hidden p-5">
@@ -141,10 +169,10 @@
         </div>
 
         <nav id="bottom-nav" class="fixed bottom-0 w-full max-w-md bg-white border-t-2 flex justify-around p-4 z-50 hidden shadow-2xl">
-            <button onclick="switchView('home')" class="flex flex-col items-center text-gray-400 font-black"><i class="fas fa-cash-register text-2xl"></i><span class="text-[9px] mt-1">KASIR</span></button>
-            <button onclick="switchView('products')" class="flex flex-col items-center text-gray-400 font-black"><i class="fas fa-boxes text-2xl"></i><span class="text-[9px] mt-1">STOK</span></button>
-            <button onclick="switchView('history')" class="flex flex-col items-center text-gray-400 font-black"><i class="fas fa-receipt text-2xl"></i><span class="text-[9px] mt-1">LAPORAN</span></button>
-            <button onclick="switchView('profile')" class="flex flex-col items-center text-gray-400 font-black"><i class="fas fa-user-cog text-2xl"></i><span class="text-[9px] mt-1">AKUN</span></button>
+            <button onclick="switchView('home')" class="flex flex-col items-center text-gray-400 font-black hover:text-blue-600 active:text-blue-600"><i class="fas fa-cash-register text-2xl"></i><span class="text-[9px] mt-1">KASIR</span></button>
+            <button onclick="switchView('products')" class="flex flex-col items-center text-gray-400 font-black hover:text-blue-600 active:text-blue-600"><i class="fas fa-boxes text-2xl"></i><span class="text-[9px] mt-1">STOK</span></button>
+            <button onclick="switchView('history')" class="flex flex-col items-center text-gray-400 font-black hover:text-blue-600 active:text-blue-600"><i class="fas fa-receipt text-2xl"></i><span class="text-[9px] mt-1">LAPORAN</span></button>
+            <button onclick="switchView('profile')" class="flex flex-col items-center text-gray-400 font-black hover:text-blue-600 active:text-blue-600"><i class="fas fa-user-cog text-2xl"></i><span class="text-[9px] mt-1">AKUN</span></button>
         </nav>
     </div>
 
@@ -155,24 +183,28 @@
                 <b id="r-store-name"></b>
                 <span id="r-store-addr"></span>
                 <div style="border-bottom: 2px dashed #000; margin: 12px 0;"></div>
-                <div class="flex justify-between text-[11px] font-black uppercase"><span>Nota:</span><span id="r-id"></span></div>
-                <div class="flex justify-between text-[11px] font-black uppercase"><span>Tgl:</span><span id="r-date"></span></div>
+                <div class="flex justify-between text-[12px] font-black uppercase"><span>Nota:</span><span id="r-id"></span></div>
+                <div class="flex justify-between text-[12px] font-black uppercase"><span>Tgl:</span><span id="r-date"></span></div>
                 <div style="border-bottom: 2px dashed #000; margin: 12px 0;"></div>
-                
-                <div id="r-items" class="space-y-2"></div>
-                
-                <div class="total-row"><span>TOTAL</span><span id="r-total"></span></div>
+                <div id="r-items" class="space-y-1"></div>
+                <div class="total-row mt-4"><span>TOTAL</span><span id="r-total"></span></div>
                 <div style="border-bottom: 2px dashed #000; margin: 12px 0;"></div>
-                <div class="flex justify-between text-[11px] font-black uppercase"><span>Metode:</span><span id="r-method"></span></div>
+                <div class="flex justify-between text-[12px] font-black uppercase"><span>Metode:</span><span id="r-method"></span></div>
                 
                 <div id="r-cash-info" class="hidden">
-                    <div class="flex justify-between text-[11px] font-black uppercase"><span>Bayar:</span><span id="r-pay"></span></div>
-                    <div class="flex justify-between text-[11px] font-black uppercase"><span>Kembali:</span><span id="r-change"></span></div>
+                    <div class="flex justify-between text-[12px] font-black uppercase"><span>Bayar:</span><span id="r-pay"></span></div>
+                    <div class="flex justify-between text-[12px] font-black uppercase"><span id="lbl-change">Kembali:</span><span id="r-change"></span></div>
                 </div>
                 
                 <div id="verified-label" class="hidden">
                     <div class="verified-badge">
-                        <i class="fas fa-check-circle"></i> PEMBAYARAN TERVERIFIKASI
+                        <i class="fas fa-check-circle"></i> PEMBAYARAN LUNAS
+                    </div>
+                </div>
+                
+                <div id="unpaid-label" class="hidden">
+                    <div class="unpaid-badge">
+                        <i class="fas fa-exclamation-triangle"></i> BELUM LUNAS
                     </div>
                 </div>
 
@@ -186,17 +218,20 @@
     </div>
 
     <div id="modal-checkout" class="fixed inset-0 bg-black/70 hidden z-[60] flex items-end">
-        <div class="bg-white w-full max-w-md mx-auto rounded-t-[40px] p-8 h-[80vh] flex flex-col shadow-2xl">
+        <div class="bg-white w-full max-w-md mx-auto rounded-t-[40px] p-8 h-[85vh] flex flex-col shadow-2xl">
             <div class="flex justify-between items-center mb-6"><h3 class="font-black text-2xl text-blue-700 italic uppercase">Konfirmasi</h3><button onclick="closeModal('modal-checkout')" class="text-4xl text-gray-300">&times;</button></div>
             <div id="cart-items-list" class="flex-1 overflow-y-auto space-y-3"></div>
             <div class="border-t-4 border-gray-100 pt-6">
                 <div class="flex justify-between font-black text-2xl mb-6"><span>Total</span><span id="checkout-total"></span></div>
-                <select id="pay-method" onchange="togglePayInput()" class="w-full border-2 p-4 rounded-2xl font-black bg-gray-50 mb-3 outline-none uppercase">
-                    <option value="Cash">TUNAI / CASH</option><option value="QRIS">QRIS (OTOMATIS VERIFIKASI)</option><option value="Transfer">TRANSFER BANK</option>
+                <label class="text-[10px] font-black text-gray-400 uppercase">Metode Pembayaran</label>
+                <select id="pay-method" onchange="togglePayInput()" class="w-full border-2 p-4 rounded-2xl font-black bg-gray-50 mb-3 outline-none uppercase text-lg">
+                    <option value="Cash">TUNAI / CASH</option>
+                    <option value="QRIS">QRIS / TRANSFER</option>
+                    <option value="Hutang" class="text-red-600">BELUM LUNAS / BON</option>
                 </select>
                 <div id="cash-area">
-                    <input type="number" id="pay-cash" oninput="calculateChange()" placeholder="BAYAR" class="w-full border-2 p-4 rounded-2xl font-black text-2xl text-green-600 outline-none">
-                    <div class="flex justify-between text-red-600 font-black text-lg mt-2 px-2 uppercase"><span>Kembali</span><span id="pay-change">Rp 0</span></div>
+                    <input type="number" id="pay-cash" oninput="calculateChange()" placeholder="MASUKKAN UANG" class="w-full border-2 p-4 rounded-2xl font-black text-2xl text-green-600 outline-none">
+                    <div class="flex justify-between text-red-600 font-black text-lg mt-2 px-2 uppercase"><span id="txt-change-label">Kembali</span><span id="pay-change">Rp 0</span></div>
                 </div>
                 <button onclick="confirmTransaction()" class="w-full bg-blue-600 text-white py-5 rounded-3xl font-black text-2xl mt-4">KONFIRMASI BAYAR</button>
             </div>
@@ -208,15 +243,26 @@
             <h3 class="font-black text-2xl mb-6 italic uppercase">Data Barang</h3>
             <input type="hidden" id="p-id">
             <div class="space-y-4">
-                <input type="text" id="p-name" placeholder="NAMA BARANG" class="w-full border-2 p-4 rounded-xl font-bold uppercase">
-                <input type="number" id="p-price" placeholder="HARGA" class="w-full border-2 p-4 rounded-xl font-bold">
-                <input type="text" id="p-cat" placeholder="KATEGORI" class="w-full border-2 p-4 rounded-xl font-bold uppercase">
+                <div>
+                    <label class="text-[10px] font-black text-gray-400 uppercase">Nama Produk</label>
+                    <input type="text" id="p-name" placeholder="CONTOH: VOUCHER 2GB" class="w-full border-2 p-4 rounded-xl font-bold uppercase">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-gray-400 uppercase">Harga Jual</label>
+                    <input type="number" id="p-price" placeholder="0" class="w-full border-2 p-4 rounded-xl font-bold">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-gray-400 uppercase">Kategori / Label</label>
+                    <input type="text" id="p-cat" list="category-suggestions" placeholder="CONTOH: ACC / VC ISAT" class="w-full border-2 p-4 rounded-xl font-bold uppercase">
+                    <datalist id="category-suggestions"></datalist>
+                </div>
             </div>
             <div class="flex gap-3 mt-8"><button onclick="saveProduct()" class="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-black">SIMPAN</button><button onclick="closeModal('modal-product')" class="flex-1 bg-gray-100 py-4 rounded-2xl font-black uppercase">Batal</button></div>
         </div>
     </div>
 
     <script>
+        // --- KONTROL FIREBASE ---
         const firebaseConfig = {
             apiKey: "AIzaSyAm7IT8Y17Ru81EyjTk4QCGtW2ui_KnldE",
             authDomain: "abisam-8189d.firebaseapp.com",
@@ -230,6 +276,8 @@
         const db = firebase.database();
 
         let products = [], txns = [], cart = [], account = {}, currentUser = null;
+        let activeCategoryFilter = 'SEMUA'; // Default filter
+
         const rp = (n) => 'Rp ' + (n || 0).toLocaleString('id-ID').replace(/,/g, '.');
 
         function syncData() {
@@ -241,9 +289,15 @@
                     account = data.account || { store: "ABISAM CELL", addr: "WIRADESA", logo: "", password: "" };
                     products = data.products ? Object.values(data.products) : [];
                     txns = data.transactions ? Object.values(data.transactions).reverse() : [];
+                    
                     document.getElementById('brand-name-header').innerText = account.store;
                     document.getElementById('header-user').innerText = "ONLINE: " + currentUser.toUpperCase();
-                    renderProducts(); renderInventory(); renderHistory(); renderProfile();
+                    
+                    renderCategoryFilters();
+                    renderProducts(); 
+                    renderInventory(); 
+                    renderHistory(); 
+                    renderProfile();
                 }
                 document.getElementById('loading').style.display = 'none';
             });
@@ -275,14 +329,50 @@
 
         function logout() { if(confirm("Yakin ingin keluar?")) { localStorage.removeItem('abisam_login'); location.reload(); } }
 
+        // --- FILTER KATEGORI ---
+        function renderCategoryFilters() {
+            // Ambil semua kategori unik
+            const categories = ['SEMUA', ...new Set(products.map(p => p.category))].filter(Boolean);
+            const container = document.getElementById('category-filter-list');
+            
+            container.innerHTML = categories.map(cat => {
+                const isActive = activeCategoryFilter === cat;
+                const style = isActive 
+                    ? "bg-blue-600 text-white shadow-md border-blue-600" 
+                    : "bg-white text-gray-600 border-gray-200 hover:bg-gray-100";
+                
+                return `<button onclick="setCategoryFilter('${cat}')" class="${style} px-4 py-1.5 rounded-full font-black text-[10px] uppercase border transition-all whitespace-nowrap">${cat}</button>`;
+            }).join('');
+
+            // Update juga datalist untuk input produk
+            const datalist = document.getElementById('category-suggestions');
+            // Hilangkan 'SEMUA' dari saran input
+            const suggestions = categories.filter(c => c !== 'SEMUA');
+            datalist.innerHTML = suggestions.map(c => `<option value="${c}">`).join('');
+        }
+
+        function setCategoryFilter(cat) {
+            activeCategoryFilter = cat;
+            renderCategoryFilters(); // Re-render tombol agar warna aktif berubah
+            renderProducts(); // Refresh list produk
+        }
+
+        // --- RENDER PRODUK ---
         function renderProducts() {
             const s = document.getElementById('search-input').value.toLowerCase();
-            let list = products.filter(p => p.name.toLowerCase().includes(s));
+            
+            // Filter berdasarkan Search text AND Kategori
+            let list = products.filter(p => {
+                const matchesSearch = p.name.toLowerCase().includes(s);
+                const matchesCat = activeCategoryFilter === 'SEMUA' || p.category === activeCategoryFilter;
+                return matchesSearch && matchesCat;
+            });
+
             document.getElementById('txn-product-list').innerHTML = list.map(p => {
                 const item = cart.find(c => c.id === p.id);
                 return `<div class="bg-white p-4 rounded-[24px] border-2 ${item ? 'border-blue-600 bg-blue-50 shadow-md' : 'border-transparent shadow-sm'}">
-                    <div class="text-[8px] font-black text-blue-500 uppercase">${p.category || 'UMUM'}</div>
-                    <div class="font-black text-sm h-8 overflow-hidden uppercase my-1 text-gray-800 leading-tight">${p.name}</div>
+                    <div class="text-[8px] font-black text-blue-500 uppercase bg-blue-50 w-max px-2 py-0.5 rounded-md mb-1">${p.category || 'UMUM'}</div>
+                    <div class="font-black text-sm h-10 overflow-hidden uppercase my-1 text-gray-800 leading-tight">${p.name}</div>
                     <div class="font-black text-blue-700 text-lg mb-2">${rp(p.price)}</div>
                     ${item ? `<div class="flex items-center justify-between bg-blue-600 rounded-xl p-1 text-white shadow-inner">
                         <button onclick="adjustQty(${p.id}, -1)" class="w-8 h-8 font-black text-xl">-</button>
@@ -296,38 +386,150 @@
         function addToCart(id) { const p = products.find(x => x.id === id); cart.push({...p, qty: 1}); updateCartUI(); renderProducts(); }
         function adjustQty(id, d) { const item = cart.find(x => x.id === id); if(item) { item.qty += d; if(item.qty <= 0) cart = cart.filter(x => x.id !== id); updateCartUI(); renderProducts(); if(!document.getElementById('modal-checkout').classList.contains('hidden')) renderCartList(); } }
         function updateCartUI() { const count = cart.reduce((a, b) => a + b.qty, 0); const total = cart.reduce((a, b) => a + (b.price * b.qty), 0); document.getElementById('floating-bar').classList.toggle('hidden', count === 0); document.getElementById('cart-count').innerText = count; document.getElementById('float-total').innerText = rp(total); }
-        function openCheckout() { document.getElementById('modal-checkout').classList.remove('hidden'); renderCartList(); }
+        
+        // --- CHECKOUT & PEMBAYARAN ---
+        function openCheckout() { 
+            document.getElementById('modal-checkout').classList.remove('hidden'); 
+            // Reset ke default cash saat buka
+            document.getElementById('pay-method').value = 'Cash';
+            document.getElementById('pay-cash').value = '';
+            togglePayInput();
+            renderCartList(); 
+        }
+
+        function togglePayInput() { 
+            const method = document.getElementById('pay-method').value;
+            const cashArea = document.getElementById('cash-area');
+            const changeLabel = document.getElementById('txt-change-label');
+
+            if(method === 'Cash' || method === 'Hutang') {
+                cashArea.classList.remove('hidden');
+                if(method === 'Hutang') {
+                     changeLabel.innerText = "SISA TAGIHAN";
+                     // Jika hutang, input bayar opsional (bisa DP)
+                     document.getElementById('pay-cash').placeholder = "DP (OPSIONAL)";
+                } else {
+                     changeLabel.innerText = "KEMBALI";
+                     document.getElementById('pay-cash').placeholder = "MASUKKAN UANG";
+                }
+            } else {
+                cashArea.classList.add('hidden');
+            }
+            calculateChange();
+        }
+
+        function calculateChange() { 
+            const total = cart.reduce((a, b) => a + (b.price * b.qty), 0); 
+            const pay = parseInt(document.getElementById('pay-cash').value) || 0; 
+            const method = document.getElementById('pay-method').value;
+
+            let diff = pay - total;
+            
+            if (method === 'Hutang') {
+                // Jika hutang, selisih negatif adalah sisa hutang
+                document.getElementById('pay-change').innerText = rp(Math.abs(Math.min(0, diff))); 
+                document.getElementById('pay-change').classList.add('text-red-600');
+            } else {
+                // Jika cash, tampilkan kembalian (min 0)
+                document.getElementById('pay-change').innerText = rp(Math.max(0, diff));
+                document.getElementById('pay-change').classList.remove('text-red-600');
+            }
+        }
+
         function renderCartList() { const total = cart.reduce((a, b) => a + (b.price * b.qty), 0); document.getElementById('cart-items-list').innerHTML = cart.map(item => `<div class="flex justify-between items-center bg-gray-50 p-4 rounded-2xl border-2"><div><div class="text-sm font-bold uppercase">${item.name}</div><div class="text-xs text-blue-600 font-black">${rp(item.price)}</div></div><div class="flex items-center gap-3"><button onclick="adjustQty(${item.id}, -1)" class="w-8 h-8 bg-red-100 text-red-600 rounded-full font-black">-</button><span class="font-black text-lg">${item.qty}</span><button onclick="adjustQty(${item.id}, 1)" class="w-8 h-8 bg-green-100 text-green-600 rounded-full font-black">+</button></div></div>`).join(''); document.getElementById('checkout-total').innerText = rp(total); calculateChange(); }
-        function calculateChange() { const total = cart.reduce((a, b) => a + (b.price * b.qty), 0); const pay = parseInt(document.getElementById('pay-cash').value) || 0; document.getElementById('pay-change').innerText = rp(Math.max(0, pay - total)); }
 
         function confirmTransaction() {
             const total = cart.reduce((a, b) => a + (b.price * b.qty), 0);
-            const pay = parseInt(document.getElementById('pay-cash').value) || total;
+            let pay = parseInt(document.getElementById('pay-cash').value) || 0;
             const method = document.getElementById('pay-method').value;
+            
+            // Validasi Pembayaran
             if(method === 'Cash' && pay < total) return alert("UANG KURANG!");
+            if(method === 'QRIS') pay = total; // QRIS dianggap lunas otomatis
+
             const now = new Date();
             const dateFull = now.toLocaleString('id-ID', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
             const dateHeader = now.toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' }).toUpperCase();
             const id = "INV-" + Date.now().toString().slice(-6);
-            const t = { id, dateFull, dateHeader, items: cart, total, method, pay, change: pay - total };
+            
+            const t = { 
+                id, 
+                dateFull, 
+                dateHeader, 
+                items: cart, 
+                total, 
+                method, 
+                pay, 
+                change: pay - total,
+                isDebt: method === 'Hutang'
+            };
+
             db.ref('users/' + currentUser + '/transactions/' + id).set(t).then(() => { showReceipt(t); cart = []; updateCartUI(); closeModal('modal-checkout'); renderProducts(); });
         }
 
+        // --- LAPORAN DENGAN FILTER ACC ---
         function renderHistory() {
             const groups = txns.reduce((acc, t) => { if(!acc[t.dateHeader]) acc[t.dateHeader] = []; acc[t.dateHeader].push(t); return acc; }, {});
+            
             document.getElementById('transaction-list').innerHTML = Object.keys(groups).map(header => `
                 <div class="space-y-3">
                     <div class="bg-gray-200 text-gray-700 px-4 py-1 rounded-full font-black text-[10px] w-max mx-auto shadow-sm uppercase tracking-wider">${header}</div>
-                    ${groups[header].map(t => `<div class="p-4 border-2 rounded-2xl bg-white flex justify-between items-center shadow-sm" onclick='showReceipt(${JSON.stringify(t)})'>
-                        <div><b class="text-sm italic text-blue-700">${t.id}</b><p class="text-[9px] font-black text-gray-400 uppercase">${t.dateFull.split(' ').pop()} • ${t.method}</p></div>
+                    ${groups[header].map(t => {
+                        const isDebt = t.isDebt || t.method === 'Hutang';
+                        const statusColor = isDebt ? 'text-red-500' : 'text-gray-400';
+                        return `<div class="p-4 border-2 rounded-2xl bg-white flex justify-between items-center shadow-sm" onclick='showReceipt(${JSON.stringify(t)})'>
+                        <div><b class="text-sm italic text-blue-700">${t.id}</b><p class="text-[9px] font-black ${statusColor} uppercase">${t.dateFull.split(' ').pop()} • ${t.method}</p></div>
                         <div class="text-right"><div class="font-black text-gray-800 text-base">${rp(t.total)}</div><button onclick="deleteTxn(event, '${t.id}')" class="text-red-400 text-[8px] font-bold uppercase underline">Hapus</button></div>
-                    </div>`).join('')}
+                    </div>`
+                    }).join('')}
                 </div>`).join('');
         }
 
-        function deleteTxn(e, id) { e.stopPropagation(); if(confirm("Hapus permanen nota ini?")) db.ref('users/' + currentUser + '/transactions/' + id).remove(); }
-        function clearHistory() { if(confirm("⚠️ Hapus seluruh riwayat?")) db.ref('users/' + currentUser + '/transactions').remove(); }
+        // --- FITUR LAPORAN KHUSUS ACC ---
+        function renderAccReport() {
+            // Filter item yang kategorinya mengandung kata "ACC" (case insensitive)
+            let totalAccSales = 0;
+            let accItems = [];
 
+            txns.forEach(t => {
+                if(t.items) {
+                    t.items.forEach(item => {
+                        if(item.category && item.category.toUpperCase().includes('ACC')) {
+                            const subtotal = item.price * item.qty;
+                            totalAccSales += subtotal;
+                            accItems.push({
+                                date: t.dateFull,
+                                name: item.name,
+                                qty: item.qty,
+                                subtotal: subtotal
+                            });
+                        }
+                    });
+                }
+            });
+
+            // Tampilkan ke View Acc
+            document.getElementById('acc-total-sales').innerText = rp(totalAccSales);
+            document.getElementById('acc-item-list').innerHTML = accItems.length > 0 ? accItems.map(i => `
+                <div class="flex justify-between items-center bg-white p-3 rounded-xl border border-indigo-100">
+                    <div>
+                        <div class="text-[9px] text-gray-400 font-bold">${i.date}</div>
+                        <div class="text-xs font-black uppercase text-gray-700">${i.name}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-[10px] font-bold bg-indigo-100 text-indigo-600 px-2 rounded-md">x${i.qty}</div>
+                        <div class="font-black text-sm text-indigo-700">${rp(i.subtotal)}</div>
+                    </div>
+                </div>
+            `).join('') : '<div class="text-center text-gray-400 text-sm font-bold italic py-10">Belum ada penjualan ACC</div>';
+
+            switchView('acc-rekap');
+        }
+
+        function deleteTxn(e, id) { e.stopPropagation(); if(confirm("Hapus permanen nota ini?")) db.ref('users/' + currentUser + '/transactions/' + id).remove(); }
+        function clearHistory() { if(confirm("⚠️ PERINGATAN! Seluruh riwayat akan dihapus total. Lanjutkan?")) db.ref('users/' + currentUser + '/transactions').remove(); }
+
+        // --- LOGIKA LOGO & SETTING ---
         function processLogo(e) {
             const reader = new FileReader();
             reader.onload = () => { account.logo = reader.result; renderProfile(); saveAccountSettings(true); };
@@ -350,37 +552,76 @@
             db.ref('users/' + currentUser + '/account').set(data).then(() => { if(!silent) alert("PENGATURAN TERSIMPAN!"); document.getElementById('acc-new-pw').value = ""; });
         }
 
+        // --- LOGIKA STRUK + VERIFIKASI ---
         function showReceipt(t) {
             const rLogo = document.getElementById('r-logo-preview');
             if(account.logo) { rLogo.src = account.logo; rLogo.classList.remove('hidden'); } else rLogo.classList.add('hidden');
+            
             document.getElementById('r-store-name').innerText = account.store;
             document.getElementById('r-store-addr').innerText = account.addr;
             document.getElementById('r-id').innerText = t.id;
             document.getElementById('r-date').innerText = t.dateFull;
             document.getElementById('r-total').innerText = rp(t.total);
             document.getElementById('r-method').innerText = t.method.toUpperCase();
+            
+            // Logika Label Lunas/Hutang
             const verified = document.getElementById('verified-label');
-            if(t.method === 'QRIS' || t.method === 'Transfer') verified.classList.remove('hidden'); else verified.classList.add('hidden');
-            if(t.method === 'Cash') { 
-                document.getElementById('r-cash-info').classList.remove('hidden'); 
+            const unpaid = document.getElementById('unpaid-label');
+            const cashInfo = document.getElementById('r-cash-info');
+            const lblChange = document.getElementById('lbl-change');
+
+            verified.classList.add('hidden');
+            unpaid.classList.add('hidden');
+            cashInfo.classList.add('hidden');
+
+            if(t.method === 'QRIS' || (t.method === 'Cash' && t.pay >= t.total)) {
+                verified.classList.remove('hidden');
+            } 
+            
+            if (t.method === 'Hutang') {
+                unpaid.classList.remove('hidden');
+                cashInfo.classList.remove('hidden');
+                lblChange.innerText = "Sisa Hutang:";
+                document.getElementById('r-pay').innerText = rp(t.pay); 
+                document.getElementById('r-change').innerText = rp(Math.abs(t.change)); // Tampilkan positif
+            } else if (t.method === 'Cash') {
+                cashInfo.classList.remove('hidden');
+                lblChange.innerText = "Kembali:";
                 document.getElementById('r-pay').innerText = rp(t.pay); 
                 document.getElementById('r-change').innerText = rp(t.change); 
-            } else document.getElementById('r-cash-info').classList.add('hidden');
-            document.getElementById('r-items').innerHTML = t.items.map(i => `<div class="item-row"><span class="item-name">${i.name} (x${i.qty})</span><span class="item-price">${rp(i.price * i.qty)}</span></div>`).join('');
+            }
+            
+            document.getElementById('r-items').innerHTML = t.items.map(i => `<div class="item-row"><span class="item-name">${i.name} (x${i.qty})</span><span>${rp(i.price * i.qty)}</span></div>`).join('');
             document.getElementById('modal-receipt').classList.remove('hidden');
         }
 
+        // Inventory & Common UI
         function renderInventory() { document.getElementById('manage-product-list').innerHTML = products.map(p => `<div class="flex justify-between items-center p-4 border-2 rounded-2xl bg-white shadow-sm"><div class="flex-1"><b class="text-base uppercase">${p.name}</b><p class="text-gray-400 font-black text-[10px] uppercase">${p.category} • ${rp(p.price)}</p></div><div class="flex gap-2"><button onclick="openProductModal(${p.id})" class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm"><i class="fas fa-edit text-xs"></i></button><button onclick="deleteProduct(${p.id})" class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shadow-sm"><i class="fas fa-trash text-xs"></i></button></div></div>`).join(''); }
-        function openProductModal(id = null) { document.getElementById('modal-product').classList.remove('hidden'); if(id) { const p = products.find(x => x.id === id); document.getElementById('p-id').value = p.id; document.getElementById('p-name').value = p.name; document.getElementById('p-price').value = p.price; document.getElementById('p-cat').value = p.category; } else { document.getElementById('p-id').value = ''; document.getElementById('p-name').value = ''; document.getElementById('p-price').value = ''; document.getElementById('p-cat').value = ''; } }
+        function openProductModal(id = null) { 
+            document.getElementById('modal-product').classList.remove('hidden'); 
+            if(id) { 
+                const p = products.find(x => x.id === id); 
+                document.getElementById('p-id').value = p.id; 
+                document.getElementById('p-name').value = p.name; 
+                document.getElementById('p-price').value = p.price; 
+                document.getElementById('p-cat').value = p.category; 
+            } else { 
+                document.getElementById('p-id').value = ''; 
+                document.getElementById('p-name').value = ''; 
+                document.getElementById('p-price').value = ''; 
+                document.getElementById('p-cat').value = ''; 
+            } 
+            renderCategoryFilters(); // Refresh datalist
+        }
         function saveProduct() { const id = document.getElementById('p-id').value || Date.now(); const p = { id: parseInt(id), name: document.getElementById('p-name').value.toUpperCase(), price: parseInt(document.getElementById('p-price').value), category: document.getElementById('p-cat').value.toUpperCase() || "UMUM" }; if(!p.name || !p.price) return alert("NAMA & HARGA WAJIB ISI!"); db.ref('users/' + currentUser + '/products/' + id).set(p).then(() => closeModal('modal-product')); }
         function deleteProduct(id) { if(confirm('Hapus barang ini dari stok?')) db.ref('users/' + currentUser + '/products/' + id).remove(); }
         async function shareAsImage() { const canvas = await html2canvas(document.getElementById('capture-area'), { scale: 3 }); const blob = await (await fetch(canvas.toDataURL("image/png"))).blob(); const file = new File([blob], 'Struk-Abisam.png', { type: 'image/png' }); if (navigator.share) navigator.share({ files: [file] }); }
         function switchView(v) { document.querySelectorAll('[id^="view-"]').forEach(el => el.classList.add('hidden')); document.getElementById('view-'+v).classList.remove('hidden'); }
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-        function togglePayInput() { document.getElementById('cash-area').classList.toggle('hidden', document.getElementById('pay-method').value !== 'Cash'); }
-
+        
         const saved = localStorage.getItem('abisam_login');
         if(saved) { currentUser = saved; document.getElementById('view-login').classList.add('hidden'); document.getElementById('header').classList.remove('hidden'); document.getElementById('bottom-nav').classList.remove('hidden'); switchView('home'); syncData(); } else { document.getElementById('loading').style.display = 'none'; }
     </script>
 </body>
 </html>
+
