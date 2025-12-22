@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Abisam POS Pro - Updated</title>
+    <title>Abisam POS Pro - Updated V2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -145,7 +145,19 @@
         </div>
 
         <div id="view-products" class="hidden p-5">
-            <button onclick="openProductModal()" class="w-full bg-green-600 text-white p-5 rounded-2xl font-black text-lg mb-6 shadow-md">+ PRODUK BARU</button>
+            <div class="mb-4 relative">
+                <i class="fas fa-search absolute left-4 top-4 text-gray-400"></i>
+                <input type="text" id="inventory-search" oninput="renderInventory()" placeholder="Cari stok barang untuk diedit..." class="w-full pl-10 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl font-bold outline-none focus:border-blue-600 transition-colors uppercase">
+            </div>
+
+            <div class="flex gap-2 mb-6">
+                <button onclick="exportProducts()" class="flex-1 bg-orange-500 text-white py-2 rounded-xl font-black text-xs uppercase shadow-md active:scale-95"><i class="fas fa-file-export mr-1"></i> Backup (JSON)</button>
+                <button onclick="document.getElementById('file-import').click()" class="flex-1 bg-purple-600 text-white py-2 rounded-xl font-black text-xs uppercase shadow-md active:scale-95"><i class="fas fa-file-import mr-1"></i> Restore (JSON)</button>
+                <input type="file" id="file-import" class="hidden" accept=".json" onchange="importProducts(event)">
+            </div>
+
+            <button onclick="openProductModal()" class="w-full bg-green-600 text-white p-5 rounded-2xl font-black text-lg mb-6 shadow-md border-b-4 border-green-800 active:border-b-0 active:translate-y-1 transition-all"><i class="fas fa-plus-circle mr-2"></i>TAMBAH PRODUK BARU</button>
+            
             <div id="manage-product-list" class="space-y-3"></div>
         </div>
 
@@ -595,8 +607,77 @@
             document.getElementById('modal-receipt').classList.remove('hidden');
         }
 
-        // Inventory & Common UI
-        function renderInventory() { document.getElementById('manage-product-list').innerHTML = products.map(p => `<div class="flex justify-between items-center p-4 border-2 rounded-2xl bg-white shadow-sm"><div class="flex-1"><b class="text-base uppercase">${p.name}</b><p class="text-gray-400 font-black text-[10px] uppercase">${p.category} • ${rp(p.price)}</p></div><div class="flex gap-2"><button onclick="openProductModal(${p.id})" class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm"><i class="fas fa-edit text-xs"></i></button><button onclick="deleteProduct(${p.id})" class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shadow-sm"><i class="fas fa-trash text-xs"></i></button></div></div>`).join(''); }
+        // Inventory Logic Updated
+        function renderInventory() { 
+            const searchQuery = document.getElementById('inventory-search') ? document.getElementById('inventory-search').value.toLowerCase() : '';
+            
+            // Filter produk berdasarkan pencarian
+            const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchQuery));
+
+            document.getElementById('manage-product-list').innerHTML = filteredProducts.map(p => `
+                <div class="flex justify-between items-center p-4 border-2 rounded-2xl bg-white shadow-sm">
+                    <div class="flex-1">
+                        <b class="text-base uppercase">${p.name}</b>
+                        <p class="text-gray-400 font-black text-[10px] uppercase">${p.category} • ${rp(p.price)}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="openProductModal(${p.id})" class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm"><i class="fas fa-edit text-xs"></i></button>
+                        <button onclick="deleteProduct(${p.id})" class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shadow-sm"><i class="fas fa-trash text-xs"></i></button>
+                    </div>
+                </div>
+            `).join(''); 
+        }
+
+        // --- NEW: LOGIKA EXPORT / IMPORT JSON ---
+        function exportProducts() {
+            if(products.length === 0) return alert("Belum ada data produk untuk diekspor!");
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(products));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "backup_stok_" + new Date().toISOString().slice(0,10) + ".json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        function importProducts(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if(!confirm("⚠️ Import akan menimpa/menambah data stok yang ada. Pastikan file JSON valid. Lanjutkan?")) {
+                event.target.value = ''; // Reset input
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (!Array.isArray(importedData)) throw new Error("Format JSON salah (harus array)");
+
+                    // Validasi struktur data sederhana
+                    let validCount = 0;
+                    importedData.forEach(p => {
+                        if(p.name && p.price) {
+                            const id = p.id || Date.now() + Math.floor(Math.random() * 1000); // Pastikan ada ID
+                            db.ref('users/' + currentUser + '/products/' + id).set({
+                                id: id,
+                                name: p.name.toUpperCase(),
+                                price: parseInt(p.price),
+                                category: p.category ? p.category.toUpperCase() : "UMUM"
+                            });
+                            validCount++;
+                        }
+                    });
+                    alert(`Berhasil mengimpor ${validCount} produk!`);
+                    event.target.value = ''; // Reset input
+                } catch (err) {
+                    alert("Gagal membaca file: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
         function openProductModal(id = null) { 
             document.getElementById('modal-product').classList.remove('hidden'); 
             if(id) { 
